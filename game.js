@@ -264,11 +264,9 @@ class Enemy extends Sprite {
         // If x < playerX (Left side, moving Right): Face RIGHT (Flip).
         this.facingLeft = (this.x > playerX);
 
-        if (this.side === 'left') {
-            this.x += this.speed * (deltaTime / 1000);
-        } else {
-            this.x -= this.speed * (deltaTime / 1000);
-        }
+        // Movement Logic: Always move towards player
+        const moveDir = (playerX > this.x) ? 1 : -1;
+        this.x += moveDir * this.speed * (deltaTime / 1000);
 
         const groundY = getGroundHeight(this.x + 64) - 100;
 
