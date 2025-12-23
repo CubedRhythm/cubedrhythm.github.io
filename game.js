@@ -268,7 +268,19 @@ class Enemy extends Sprite {
             startY = 0;
         }
 
-        super(startX, startY, 128, 128);
+        let width = 128;
+        let height = 128;
+
+        if (type === 'flying') {
+            width = 128;
+            height = 80; // Pterodactyls are wider/flatter
+        } else {
+            // Velociraptors are long (approx 2:1 aspect ratio)
+            width = 220;
+            height = 110;
+        }
+
+        super(startX, startY, width, height);
         this.id = Math.random().toString(36).substr(2, 9);
         this.word = word;
         this.side = side;
