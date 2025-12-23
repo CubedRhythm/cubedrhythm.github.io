@@ -265,7 +265,7 @@ class Enemy extends Sprite {
         this.speed = (150 + (level * 15)) * speedMultiplier;
 
         if (this.type === 'flying') {
-            this.walkFrames = [images.ptero_fly_1, images.ptero_fly_2];
+            this.walkFrames = [images.ptero_fly_1, images.ptero_fly_2, images.ptero_fly_3, images.ptero_fly_4];
             this.speed *= 1.2;
             if (side !== 'top') this.y = Math.random() * 200 + 50;
         } else {
