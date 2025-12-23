@@ -25,18 +25,13 @@ const WORD_LIST = [
 // Assets
 const images = {};
 const assetsToLoad = {
-    // Player
     cat_run_1: 'assets/cat_run_1.png',
     cat_run_2: 'assets/cat_run_2.png',
     cat_attack: 'assets/cat_attack.png',
-    // Enemy (Fallback to single image if animation not passed, but we'll try to load anims)
-    dino_walk_1: 'assets/zombie_dino.png', // Default fallback
-    dino_walk_2: 'assets/zombie_dino.png', // Default fallback
+    dino_walk_1: 'assets/zombie_dino.png',
+    dino_walk_2: 'assets/zombie_dino.png',
     bg: 'assets/background.png'
 };
-
-// Try to load new dino assets if they exist (will update later)
-// For now we map to existing or new ones.
 
 let assetsLoaded = 0;
 const totalAssets = Object.keys(assetsToLoad).length;
@@ -51,7 +46,7 @@ function loadAssets(callback) {
         };
         img.onerror = () => {
             console.warn(`Failed to load ${src}`);
-            assetsLoaded++; // Count anyway to proceed
+            assetsLoaded++;
             if (assetsLoaded === totalAssets) callback();
         }
         images[key] = img;
@@ -72,6 +67,10 @@ let lastTime = 0;
 let currentInput = "";
 let speedMultiplier = 1;
 
+// Visual Polish State
+let bgX = 0;
+let screenShake = 0;
+
 // Entities
 class Sprite {
     constructor(x, y, width, height) {
@@ -81,10 +80,9 @@ class Sprite {
         this.height = height;
         this.frameTimer = 0;
         this.currentFrame = 0;
-        this.frameInterval = 200; // ms per frame
+        this.frameInterval = 200;
     }
 
-    // Default draw if no animation (overridden)
     draw() { }
 }
 
@@ -92,15 +90,19 @@ class Player extends Sprite {
     constructor() {
         super(100, canvas.height - GROUND_Y - 128, 128, 128);
         this.baseY = this.y;
-        this.state = 'RUNNING'; // RUNNING, ATTACKING
+        this.state = 'RUNNING';
         this.attackTimer = 0;
+        this.bobTimer = 0; // For bobbing effect
 
-        // Animation Frames
         this.runFrames = [images.cat_run_1, images.cat_run_2];
         this.attackFrame = images.cat_attack;
     }
 
     update(deltaTime) {
+        // Bobbing Effect
+        this.bobTimer += deltaTime * 0.01;
+        this.y = this.baseY + Math.sin(this.bobTimer) * 5;
+
         // Animation Logic
         if (this.state === 'RUNNING') {
             this.frameTimer += deltaTime;
@@ -115,7 +117,7 @@ class Player extends Sprite {
             this.attackTimer -= deltaTime;
             if (this.attackTimer <= 0) {
                 this.state = 'RUNNING';
-                this.x = 100; // Reset position
+                this.x = 100;
             }
         }
     }
@@ -124,9 +126,9 @@ class Player extends Sprite {
         this.state = 'ATTACKING';
         if (type === 'melee') {
             this.attackTimer = 300;
-            this.x = 150; // Lunge
+            this.x = 150;
         } else {
-            this.attackTimer = 200; // Throw
+            this.attackTimer = 200;
         }
     }
 
@@ -201,15 +203,12 @@ class Enemy extends Sprite {
         super(canvas.width, canvas.height - GROUND_Y - 128, 128, 128);
         this.word = word;
         this.speed = (100 + (level * 10)) * speedMultiplier;
-
-        // Animation (Fallback if frames missing)
         this.walkFrames = [images.dino_walk_1, images.dino_walk_2];
     }
 
     update(deltaTime) {
         this.x -= this.speed * (deltaTime / 1000);
 
-        // Animation
         this.frameTimer += deltaTime;
         if (this.frameTimer > this.frameInterval) {
             this.currentFrame = (this.currentFrame + 1) % this.walkFrames.length;
@@ -222,12 +221,10 @@ class Enemy extends Sprite {
         if (img && img.complete && img.naturalHeight !== 0) {
             ctx.drawImage(img, this.x, this.y, this.width, this.height);
         } else {
-            // Fallback
             ctx.fillStyle = 'green';
             ctx.fillRect(this.x, this.y, this.width, this.height);
         }
 
-        // Draw Word Box
         ctx.font = '20px "Press Start 2P"';
         ctx.textAlign = 'center';
 
@@ -318,9 +315,10 @@ function checkInput() {
 
         if (dist < MELEE_RANGE) {
             playerInstance.attack('melee');
-            createExplosion(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, '#ff0044');
+            createExplosion(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, '#ff0044'); // Blood red effect
             enemies.splice(matchIndex, 1);
             score += 20;
+            screenShake = 10; // Intense shake for melee
         } else {
             playerInstance.attack('range');
             projectiles.push(new Projectile(
@@ -333,6 +331,7 @@ function checkInput() {
             createExplosion(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, '#ffff00');
             enemies.splice(matchIndex, 1);
             score += 10;
+            screenShake = 5; // Light shake for hit
         }
 
         currentInput = "";
@@ -363,9 +362,20 @@ window.addEventListener('resize', resize);
 function update(deltaTime) {
     if (playerInstance) playerInstance.update(deltaTime);
 
+    // Update BG
+    bgX -= 100 * (deltaTime / 1000); // Scroll speed
+    if (bgX <= -canvas.width) bgX = 0;
+
+    // Reduce shake
+    if (screenShake > 0) {
+        screenShake -= 0.5;
+        if (screenShake < 0) screenShake = 0;
+    }
+
     spawnTimer += deltaTime;
     if (spawnTimer > spawnInterval) {
         const word = WORD_LIST[Math.floor(Math.random() * WORD_LIST.length)];
+        // Ensure unique words on screen
         if (!enemies.some(e => e.word === word)) {
             enemies.push(new Enemy(word));
             spawnTimer = 0;
@@ -400,8 +410,20 @@ function update(deltaTime) {
 }
 
 function draw() {
+    ctx.save();
+
+    // Apply shake
+    if (screenShake > 0) {
+        const dx = (Math.random() - 0.5) * screenShake;
+        const dy = (Math.random() - 0.5) * screenShake;
+        ctx.translate(dx, dy);
+    }
+
+    // Draw Scrolling BG
     if (images.bg && images.bg.complete) {
-        ctx.drawImage(images.bg, 0, 0, canvas.width, canvas.height);
+        // Draw twice to loop
+        ctx.drawImage(images.bg, bgX, 0, canvas.width, canvas.height);
+        ctx.drawImage(images.bg, bgX + canvas.width, 0, canvas.width, canvas.height);
     } else {
         ctx.fillStyle = '#2d1b2e';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -411,6 +433,8 @@ function draw() {
     enemies.forEach(e => e.draw());
     projectiles.forEach(p => p.draw());
     particles.forEach(p => p.draw());
+
+    ctx.restore();
 }
 
 function loop(timestamp) {
