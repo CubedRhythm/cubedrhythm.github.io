@@ -285,26 +285,40 @@ class Enemy extends Sprite {
         // If x < playerX (Left side, moving Right): Face RIGHT (Flip).
         this.facingLeft = (this.x > playerX);
 
-        // Movement Logic: Always move towards player
-        const moveDir = (playerX > this.x) ? 1 : -1;
-        this.x += moveDir * this.speed * (deltaTime / 1000);
+        if (this.type === 'flying') {
+            // Flying Logic: Swoop towards player
+            const targetX = playerX;
+            const targetY = playerInstance.y - 50; // Aim for head/body
 
-        const groundY = getGroundHeight(this.x + 64) - 100;
+            const dx = targetX - this.x;
+            const dy = targetY - this.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
 
-        if (this.isJumping) {
-            this.velocityY += 2000 * (deltaTime / 1000);
-            this.y += this.velocityY * (deltaTime / 1000);
+            this.x += (dx / dist) * this.speed * (deltaTime / 1000);
+            this.y += (dy / dist) * this.speed * (deltaTime / 1000);
 
-            if (this.y > groundY) {
-                this.y = groundY;
-                this.isJumping = false;
-                this.velocityY = 0;
-            }
         } else {
-            this.y = groundY;
-            if (distToPlayer < 250 && !this.isJumping) {
-                this.isJumping = true;
-                this.velocityY = -800;
+            // Ground Logic
+            const moveDir = (playerX > this.x) ? 1 : -1;
+            this.x += moveDir * this.speed * (deltaTime / 1000);
+
+            const groundY = getGroundHeight(this.x + 64) - 100;
+
+            if (this.isJumping) {
+                this.velocityY += 2000 * (deltaTime / 1000);
+                this.y += this.velocityY * (deltaTime / 1000);
+
+                if (this.y > groundY) {
+                    this.y = groundY;
+                    this.isJumping = false;
+                    this.velocityY = 0;
+                }
+            } else {
+                this.y = groundY;
+                if (distToPlayer < 250 && !this.isJumping) {
+                    this.isJumping = true;
+                    this.velocityY = -800;
+                }
             }
         }
 
