@@ -40,6 +40,14 @@ const assetsToLoad = {
     ptero_fly_6: 'assets/ptero_fly_6.png',
     ptero_fly_7: 'assets/ptero_fly_7.png',
     ptero_fly_8: 'assets/ptero_fly_8.png',
+    raptor_run_1: 'assets/raptor_run_1.png',
+    raptor_run_2: 'assets/raptor_run_2.png',
+    raptor_run_3: 'assets/raptor_run_3.png',
+    raptor_run_4: 'assets/raptor_run_4.png',
+    raptor_run_5: 'assets/raptor_run_5.png',
+    raptor_run_6: 'assets/raptor_run_6.png',
+    raptor_run_7: 'assets/raptor_run_7.png',
+    raptor_run_8: 'assets/raptor_run_8.png',
     bg: 'assets/background_jungle.png'
 };
 
@@ -276,7 +284,11 @@ class Enemy extends Sprite {
             this.speed *= 1.2;
             if (side !== 'top') this.y = Math.random() * 200 + 50;
         } else {
-            this.walkFrames = [images.dino_walk_1, images.dino_walk_2];
+            // Velociraptor (8 frames)
+            this.walkFrames = [
+                images.raptor_run_1, images.raptor_run_2, images.raptor_run_3, images.raptor_run_4,
+                images.raptor_run_5, images.raptor_run_6, images.raptor_run_7, images.raptor_run_8
+            ];
         }
 
         this.isJumping = false;
@@ -537,7 +549,7 @@ function update(deltaTime) {
                 else if (r2 < 0.66) side = 'left';
                 else side = 'right';
             } else {
-                // 70% T-Rex
+                // 70% Velociraptor
                 type = 'ground';
                 side = Math.random() < 0.5 ? 'left' : 'right';
             }
