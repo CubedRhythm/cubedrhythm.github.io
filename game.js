@@ -32,6 +32,8 @@ const assetsToLoad = {
     cat_attack: 'assets/cat_attack.png',
     dino_walk_1: 'assets/dino_realistic_walk_1.png',
     dino_walk_2: 'assets/dino_realistic_walk_2.png',
+    ptero_fly_1: 'assets/ptero_fly_1.png',
+    ptero_fly_2: 'assets/ptero_fly_2.png',
     bg: 'assets/background_jungle.png'
 };
 
@@ -241,14 +243,33 @@ class Projectile {
 }
 
 class Enemy extends Sprite {
-    constructor(word, side) {
-        let startX = side === 'left' ? -150 : canvas.width + 150;
-        super(startX, 0, 128, 128);
+    constructor(word, side, type = 'ground') {
+        let startX, startY;
+
+        if (side === 'top') {
+            startX = Math.random() * (canvas.width - 100) + 50;
+            startY = -150;
+        } else {
+            startX = side === 'left' ? -150 : canvas.width + 150;
+            startY = 0; // Will be corrected by updates
+        }
+
+        super(startX, startY, 128, 128);
         this.id = Math.random().toString(36).substr(2, 9);
         this.word = word;
         this.side = side;
+        this.type = type;
+
         this.speed = (150 + (level * 15)) * speedMultiplier;
-        this.walkFrames = [images.dino_walk_1, images.dino_walk_2];
+
+        if (this.type === 'flying') {
+            this.walkFrames = [images.ptero_fly_1, images.ptero_fly_2];
+            this.speed *= 1.2; // Faster
+            // Random cruising altitude if not top spawn
+            if (side !== 'top') this.y = Math.random() * 200 + 50;
+        } else {
+            this.walkFrames = [images.dino_walk_1, images.dino_walk_2];
+        }
 
         this.isJumping = false;
         this.velocityY = 0;
@@ -481,8 +502,25 @@ function update(deltaTime) {
     if (spawnTimer > spawnInterval) {
         const word = WORD_LIST[Math.floor(Math.random() * WORD_LIST.length)];
         if (!enemies.some(e => e.word === word)) {
-            const side = Math.random() < 0.5 ? 'left' : 'right';
-            enemies.push(new Enemy(word, side));
+            // Spawning Logic
+            const rand = Math.random();
+            let side, type;
+
+            if (rand < 0.3) {
+                // 30% Pterodactyl
+                type = 'flying';
+                // 33% Top, 33% Left, 33% Right
+                const r2 = Math.random();
+                if (r2 < 0.33) side = 'top';
+                else if (r2 < 0.66) side = 'left';
+                else side = 'right';
+            } else {
+                // 70% T-Rex
+                type = 'ground';
+                side = Math.random() < 0.5 ? 'left' : 'right';
+            }
+
+            enemies.push(new Enemy(word, side, type));
             spawnTimer = 0;
         }
     }
