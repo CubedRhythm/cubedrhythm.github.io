@@ -346,28 +346,14 @@ class Enemy extends Sprite {
         // If this.facingLeft is TRUE, we want to draw it normally (Left).
         // If this.facingLeft is FALSE, we want to Flip it (Right).
 
-        if (this.type === 'flying') {
-            // Pterodactyl Source is LEFT.
-            if (this.facingLeft) {
-                // Want Left. Source Left. Normal.
-                ctx.drawImage(img, this.x, this.y, this.width, this.height);
-            } else {
-                // Want Right. Source Left. Flip.
-                ctx.translate(this.x + this.width, this.y);
-                ctx.scale(-1, 1);
-                ctx.drawImage(img, 0, 0, this.width, this.height);
-            }
+        if (this.facingLeft) {
+            // Source is RIGHT. We want LEFT. So FLIP.
+            ctx.translate(this.x + this.width, this.y);
+            ctx.scale(-1, 1);
+            ctx.drawImage(img, 0, 0, this.width, this.height);
         } else {
-            // T-Rex Source is RIGHT.
-            if (this.facingLeft) {
-                // Want Left. Source Right. Flip.
-                ctx.translate(this.x + this.width, this.y);
-                ctx.scale(-1, 1);
-                ctx.drawImage(img, 0, 0, this.width, this.height);
-            } else {
-                // Want Right. Source Right. Normal.
-                ctx.drawImage(img, this.x, this.y, this.width, this.height);
-            }
+            // Source is RIGHT. We want RIGHT. So NORMAL.
+            ctx.drawImage(img, this.x, this.y, this.width, this.height);
         }
         ctx.restore();
 
