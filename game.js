@@ -36,6 +36,10 @@ const assetsToLoad = {
     ptero_fly_2: 'assets/ptero_fly_2.png',
     ptero_fly_3: 'assets/ptero_fly_3.png',
     ptero_fly_4: 'assets/ptero_fly_4.png',
+    ptero_fly_5: 'assets/ptero_fly_5.png',
+    ptero_fly_6: 'assets/ptero_fly_6.png',
+    ptero_fly_7: 'assets/ptero_fly_7.png',
+    ptero_fly_8: 'assets/ptero_fly_8.png',
     bg: 'assets/background_jungle.png'
 };
 
@@ -265,7 +269,10 @@ class Enemy extends Sprite {
         this.speed = (150 + (level * 15)) * speedMultiplier;
 
         if (this.type === 'flying') {
-            this.walkFrames = [images.ptero_fly_1, images.ptero_fly_2, images.ptero_fly_3, images.ptero_fly_4];
+            this.walkFrames = [
+                images.ptero_fly_1, images.ptero_fly_2, images.ptero_fly_3, images.ptero_fly_4,
+                images.ptero_fly_5, images.ptero_fly_6, images.ptero_fly_7, images.ptero_fly_8
+            ];
             this.speed *= 1.2;
             if (side !== 'top') this.y = Math.random() * 200 + 50;
         } else {
