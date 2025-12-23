@@ -26,10 +26,18 @@ def smart_slice(sheet_path, output_dir, output_prefix):
     # Let's simple scan for non-background pixels
     # Background definition: Alpha=0 OR (R>240 and G>240 and B>240)
     
+    # Auto-detect background color from top-left pixel
+    bg_r, bg_g, bg_b, bg_a = pixels[0, 0]
+    
     def is_content(x, y):
         r, g, b, a = pixels[x, y]
-        if a < 10: return False
-        if r > 240 and g > 240 and b > 240: return False
+        if a < 10: return False # Transparent is bg
+        
+        # Check distance from detected background color
+        # Tolerance of 30
+        if abs(r - bg_r) < 30 and abs(g - bg_g) < 30 and abs(b - bg_b) < 30:
+            return False
+            
         return True
 
     # Find connected components
