@@ -30,7 +30,7 @@ def remove_white_background(image_path):
                 if 0 <= nx < width and 0 <= ny < height and (nx, ny) not in visited:
                     # Check if color matches background (tolerance)
                     r, g, b, a = pixels[nx, ny]
-                    if abs(r - bg_r) < 30 and abs(g - bg_g) < 30 and abs(b - bg_b) < 30:
+                    if abs(r - bg_r) < 50 and abs(g - bg_g) < 50 and abs(b - bg_b) < 50:
                         visited.add((nx, ny))
                         queue.append((nx, ny))
 

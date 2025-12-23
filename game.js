@@ -584,6 +584,7 @@ function update(deltaTime) {
 
 function draw() {
     ctx.save();
+    ctx.clearRect(0, 0, canvas.width, canvas.height); // FORCE CLEAR to prevent trailing
 
     if (screenShake > 0) {
         ctx.translate((Math.random() - 0.5) * screenShake, (Math.random() - 0.5) * screenShake);
