@@ -4,21 +4,44 @@ import sys
 
 def remove_white_background(image_path):
     try:
-        img = Image.open(image_path)
-        img = img.convert("RGBA")
-        datas = img.getdata()
+        img = Image.open(image_path).convert("RGBA")
+        width, height = img.size
+        pixels = img.load()
         
         # Get background color from top-left pixel
-        bg_r, bg_g, bg_b, bg_a = datas[0]
+        bg_r, bg_g, bg_b, bg_a = pixels[0, 0]
+        
+        # Flood fill from all 4 corners to find connected background
+        # This ensures we don't accidentally remove matching colors INSIDE the sprite
+        queue = [(0,0), (width-1, 0), (0, height-1), (width-1, height-1)]
+        visited = set(queue)
+        
+        background_pixels = set()
+        
+        while queue:
+            x, y = queue.pop(0)
+            
+            # Identify this as background
+            background_pixels.add((x, y))
+            
+            # Check neighbors
+            for dx, dy in [(-1,0), (1,0), (0,-1), (0,1)]:
+                nx, ny = x + dx, y + dy
+                if 0 <= nx < width and 0 <= ny < height and (nx, ny) not in visited:
+                    # Check if color matches background (tolerance)
+                    r, g, b, a = pixels[nx, ny]
+                    if abs(r - bg_r) < 30 and abs(g - bg_g) < 30 and abs(b - bg_b) < 30:
+                        visited.add((nx, ny))
+                        queue.append((nx, ny))
 
+        # Apply transparency
         newData = []
-        for item in datas:
-            # Change pixels matching background color (within tolerance) to transparent
-            # Tolerance of 30
-            if abs(item[0] - bg_r) < 30 and abs(item[1] - bg_g) < 30 and abs(item[2] - bg_b) < 30:
-                newData.append((255, 255, 255, 0))
-            else:
-                newData.append(item)
+        for y in range(height):
+            for x in range(width):
+                if (x, y) in background_pixels:
+                    newData.append((255, 255, 255, 0))
+                else:
+                    newData.append(pixels[x, y])
 
         img.putdata(newData)
         img.save(image_path, "PNG")
