@@ -251,7 +251,7 @@ class Enemy extends Sprite {
             startY = -150;
         } else {
             startX = side === 'left' ? -150 : canvas.width + 150;
-            startY = 0; // Will be corrected by updates
+            startY = 0;
         }
 
         super(startX, startY, 128, 128);
@@ -264,8 +264,7 @@ class Enemy extends Sprite {
 
         if (this.type === 'flying') {
             this.walkFrames = [images.ptero_fly_1, images.ptero_fly_2];
-            this.speed *= 1.2; // Faster
-            // Random cruising altitude if not top spawn
+            this.speed *= 1.2;
             if (side !== 'top') this.y = Math.random() * 200 + 50;
         } else {
             this.walkFrames = [images.dino_walk_1, images.dino_walk_2];
