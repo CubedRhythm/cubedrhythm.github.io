@@ -71,7 +71,9 @@ def smart_slice(sheet_path, output_dir, output_prefix):
                 
                 # Blob defined
                 if (max_x - min_x) > 10 and (max_y - min_y) > 10: # Filter tiny noise
-                    blobs.append((min_x, min_y, max_x, max_y))
+                    # Filter huge blobs (likely the whole page or borders)
+                    if (max_x - min_x) < width * 0.9 and (max_y - min_y) < height * 0.9:
+                        blobs.append((min_x, min_y, max_x, max_y))
     
     # Sort blobs: Top-to-bottom, then Left-to-right
     # Allow some slack for rows
