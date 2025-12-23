@@ -164,9 +164,11 @@ canvas {
     justify-content: space-between;
     align-items: center;
     padding: 20px 50px;
-    background: rgba(0, 0, 0, 0.8);
-    backdrop-filter: blur(10px);
-    border-bottom: 1px solid #333;
+    background: rgba(0, 0, 0, 0.85);
+    /* Slightly darker for contrast */
+    backdrop-filter: blur(16px);
+    /* Stronger blur */
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
     position: sticky;
     top: 0;
     z-index: 100;
@@ -174,8 +176,10 @@ canvas {
 
 .navbar .logo {
     font-family: 'Press Start 2P', cursive;
-    font-size: 18px;
+    font-size: 20px;
+    /* Larger logo */
     color: #fff;
+    letter-spacing: 2px;
 }
 
 .navbar .highlight {
@@ -183,10 +187,13 @@ canvas {
 }
 
 .nav-links a {
-    color: #888;
+    color: #aaa;
     text-decoration: none;
-    margin-left: 30px;
+    margin-left: 40px;
+    /* More space between links */
     font-weight: 700;
+    font-size: 14px;
+    letter-spacing: 1px;
     transition: color 0.3s;
 }
 
@@ -217,44 +224,59 @@ canvas {
     background: var(--accent-color);
     padding: 5px 10px;
     border-radius: 4px;
-    font-size: 12px;
+    font-size: 14px;
     font-weight: 900;
-    margin-bottom: 15px;
+    letter-spacing: 1px;
+    margin-bottom: 25px;
+    /* More space */
     display: inline-block;
+    box-shadow: 0 0 10px var(--accent-color);
 }
 
 .hero-title {
     font-family: 'Press Start 2P', cursive;
-    font-size: 48px;
-    margin-bottom: 20px;
-    line-height: 1.2;
+    font-size: 64px;
+    /* Larger title */
+    margin-bottom: 30px;
+    line-height: 1.4;
+    /* More breathing room */
+    text-shadow: 0 0 30px rgba(0, 0, 0, 0.8);
 }
 
 .hero-desc {
-    font-size: 18px;
-    color: #ccc;
-    margin-bottom: 30px;
-    max-width: 400px;
+    font-size: 20px;
+    color: #e0e0e0;
+    margin-bottom: 40px;
+    max-width: 500px;
+    line-height: 1.6;
+    /* Better readability */
+    letter-spacing: 0.5px;
 }
 
 .play-btn {
     background: #fff;
     color: #000;
-    padding: 15px 40px;
+    padding: 18px 50px;
+    /* Larger button */
     font-weight: 900;
+    font-size: 18px;
+    letter-spacing: 2px;
     text-decoration: none;
     border-radius: 4px;
     display: inline-block;
-    transition: transform 0.2s;
+    transition: all 0.3s;
+    box-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
 }
 
 .play-btn:hover {
-    transform: scale(1.05);
+    transform: translateY(-3px) scale(1.02);
+    box-shadow: 0 0 30px rgba(255, 255, 255, 0.6);
 }
 
 .hero-visual {
     position: absolute;
-    right: 5%;
+    right: 8%;
+    /* Slightly more inset */
     bottom: -50px;
     z-index: 1;
 }
