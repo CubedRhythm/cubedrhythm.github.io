@@ -14,7 +14,7 @@ const restartBtn = document.getElementById('restart-btn');
 
 // Game Constants
 const GROUND_Y = 50;
-const MELEE_RANGE = 300; // Attack type threshold (pixels)
+const MELEE_RANGE = 300;
 const WORD_LIST = [
     "cat", "dog", "run", "jump", "fast", "ninja", "zombie", "dino", "byte", "code",
     "pixel", "slash", "claw", "roar", "hunt", "prey", "night", "moon", "star", "sky",
@@ -25,10 +25,18 @@ const WORD_LIST = [
 // Assets
 const images = {};
 const assetsToLoad = {
-    player: 'assets/ninja_cat.png',
-    enemy: 'assets/zombie_dino.png',
+    // Player
+    cat_run_1: 'assets/cat_run_1.png',
+    cat_run_2: 'assets/cat_run_2.png',
+    cat_attack: 'assets/cat_attack.png',
+    // Enemy (Fallback to single image if animation not passed, but we'll try to load anims)
+    dino_walk_1: 'assets/zombie_dino.png', // Default fallback
+    dino_walk_2: 'assets/zombie_dino.png', // Default fallback
     bg: 'assets/background.png'
 };
+
+// Try to load new dino assets if they exist (will update later)
+// For now we map to existing or new ones.
 
 let assetsLoaded = 0;
 const totalAssets = Object.keys(assetsToLoad).length;
@@ -41,6 +49,11 @@ function loadAssets(callback) {
             assetsLoaded++;
             if (assetsLoaded === totalAssets) callback();
         };
+        img.onerror = () => {
+            console.warn(`Failed to load ${src}`);
+            assetsLoaded++; // Count anyway to proceed
+            if (assetsLoaded === totalAssets) callback();
+        }
         images[key] = img;
     }
 }
@@ -61,72 +74,72 @@ let speedMultiplier = 1;
 
 // Entities
 class Sprite {
-    constructor(image, x, y, width, height) {
-        this.image = image;
+    constructor(x, y, width, height) {
         this.x = x;
         this.y = y;
         this.width = width;
         this.height = height;
+        this.frameTimer = 0;
+        this.currentFrame = 0;
+        this.frameInterval = 200; // ms per frame
     }
 
-    draw() {
-        if (this.image.complete && this.image.naturalHeight !== 0) {
-            ctx.drawImage(this.image, this.x, this.y, this.width, this.height);
-        }
-    }
+    // Default draw if no animation (overridden)
+    draw() { }
 }
 
 class Player extends Sprite {
     constructor() {
-        super(images.player, 100, canvas.height - GROUND_Y - 128, 128, 128);
+        super(100, canvas.height - GROUND_Y - 128, 128, 128);
         this.baseY = this.y;
-        this.isAttacking = false;
+        this.state = 'RUNNING'; // RUNNING, ATTACKING
         this.attackTimer = 0;
-        this.attackType = 'none'; // 'melee' or 'range'
+
+        // Animation Frames
+        this.runFrames = [images.cat_run_1, images.cat_run_2];
+        this.attackFrame = images.cat_attack;
     }
 
     update(deltaTime) {
-        if (this.isAttacking) {
+        // Animation Logic
+        if (this.state === 'RUNNING') {
+            this.frameTimer += deltaTime;
+            if (this.frameTimer > this.frameInterval) {
+                this.currentFrame = (this.currentFrame + 1) % this.runFrames.length;
+                this.frameTimer = 0;
+            }
+        }
+
+        // Attack Logic
+        if (this.state === 'ATTACKING') {
             this.attackTimer -= deltaTime;
             if (this.attackTimer <= 0) {
-                this.isAttacking = false;
+                this.state = 'RUNNING';
                 this.x = 100; // Reset position
-                this.attackType = 'none';
             }
         }
     }
 
     attack(type) {
-        this.isAttacking = true;
-        this.attackType = type;
-
+        this.state = 'ATTACKING';
         if (type === 'melee') {
-            this.attackTimer = 200;
-            this.x = 150; // Lunge forward
+            this.attackTimer = 300;
+            this.x = 150; // Lunge
         } else {
-            this.attackTimer = 100; // Quick throw animation
+            this.attackTimer = 200; // Throw
         }
     }
 
     draw() {
-        // Simple visual feedback for attack types
-        if (this.isAttacking) {
-            ctx.save();
-            ctx.filter = this.attackType === 'melee' ? 'brightness(1.5) sepia(1) hue-rotate(-50deg)' : 'brightness(1.2)';
-            super.draw();
-            ctx.restore();
-
-            // Draw Katana Slash line effect
-            if (this.attackType === 'melee') {
-                ctx.strokeStyle = '#fff';
-                ctx.lineWidth = 5;
-                ctx.beginPath();
-                ctx.moveTo(this.x + 80, this.y + 20);
-                ctx.lineTo(this.x + 120 + 50, this.y + 80);
-                ctx.stroke();
-            }
+        let img;
+        if (this.state === 'ATTACKING') {
+            img = this.attackFrame;
         } else {
-            super.draw();
+            img = this.runFrames[this.currentFrame];
+        }
+
+        if (img && img.complete) {
+            ctx.drawImage(img, this.x, this.y, this.width, this.height);
         }
     }
 }
@@ -137,9 +150,8 @@ class Projectile {
         this.y = startY;
         this.targetX = targetX;
         this.targetY = targetY;
-        this.speed = 1200; // Fast shuriken
+        this.speed = 1200;
         this.active = true;
-        this.size = 20;
         this.rotation = 0;
     }
 
@@ -149,8 +161,8 @@ class Projectile {
         const dist = Math.sqrt(dx * dx + dy * dy);
 
         if (dist < 20) {
-            this.active = false; // Hit
-            return true; // Return hit status
+            this.active = false;
+            return true;
         }
 
         const moveDist = this.speed * (deltaTime / 1000);
@@ -186,18 +198,34 @@ class Projectile {
 
 class Enemy extends Sprite {
     constructor(word) {
-        super(images.enemy, canvas.width, canvas.height - GROUND_Y - 128, 128, 128);
+        super(canvas.width, canvas.height - GROUND_Y - 128, 128, 128);
         this.word = word;
         this.speed = (100 + (level * 10)) * speedMultiplier;
-        this.markedForDeletion = false;
+
+        // Animation (Fallback if frames missing)
+        this.walkFrames = [images.dino_walk_1, images.dino_walk_2];
     }
 
     update(deltaTime) {
         this.x -= this.speed * (deltaTime / 1000);
+
+        // Animation
+        this.frameTimer += deltaTime;
+        if (this.frameTimer > this.frameInterval) {
+            this.currentFrame = (this.currentFrame + 1) % this.walkFrames.length;
+            this.frameTimer = 0;
+        }
     }
 
     draw() {
-        super.draw();
+        const img = this.walkFrames[this.currentFrame];
+        if (img && img.complete && img.naturalHeight !== 0) {
+            ctx.drawImage(img, this.x, this.y, this.width, this.height);
+        } else {
+            // Fallback
+            ctx.fillStyle = 'green';
+            ctx.fillRect(this.x, this.y, this.width, this.height);
+        }
 
         // Draw Word Box
         ctx.font = '20px "Press Start 2P"';
@@ -205,45 +233,33 @@ class Enemy extends Sprite {
 
         const textWidth = ctx.measureText(this.word).width;
 
-        // Background for text visibility
         ctx.fillStyle = 'rgba(0,0,0,0.7)';
         ctx.fillRect(this.x + this.width / 2 - textWidth / 2 - 5, this.y - 35, textWidth + 10, 30);
 
-        // Text
         const centerX = this.x + this.width / 2;
         const textY = this.y - 12;
 
         if (this.word.startsWith(currentInput) && currentInput.length > 0) {
-            // Draw matched part in yellow, rest in white
-            // We need to split text drawing to color parts differently
-
-            // Re-align to left to draw parts
             const totalWidth = ctx.measureText(this.word).width;
             const startX = centerX - totalWidth / 2;
-
             const matchedPart = this.word.substring(0, currentInput.length);
             const restPart = this.word.substring(currentInput.length);
 
             ctx.textAlign = 'left';
-
-            // Matched (Yellow)
             ctx.fillStyle = '#ffff00';
             ctx.fillText(matchedPart, startX, textY);
 
-            // Rest (White)
             const matchedWidth = ctx.measureText(matchedPart).width;
             ctx.fillStyle = '#ffffff';
             ctx.fillText(restPart, startX + matchedWidth, textY);
 
         } else {
-            // Full white
             ctx.fillStyle = '#ffffff';
             ctx.fillText(this.word, centerX, textY);
         }
     }
 }
 
-// Particles
 class Particle {
     constructor(x, y, color) {
         this.x = x;
@@ -295,25 +311,17 @@ function updateInputDisplay() {
 }
 
 function checkInput() {
-    // Find matching enemy
-    // Prioritize closest enemy if multiple match? Or just first found.
-    // Let's filter matches first
     const matchIndex = enemies.findIndex(e => e.word === currentInput);
-
     if (matchIndex !== -1) {
         const enemy = enemies[matchIndex];
-
-        // Combat Logic: Distance check
         const dist = enemy.x - playerInstance.x;
 
         if (dist < MELEE_RANGE) {
-            // Melee Attack (Instant Kill)
             playerInstance.attack('melee');
-            createExplosion(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, '#ff0044'); // Blood red effect
+            createExplosion(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, '#ff0044');
             enemies.splice(matchIndex, 1);
             score += 20;
         } else {
-            // Ranged Attack (Projectile)
             playerInstance.attack('range');
             projectiles.push(new Projectile(
                 playerInstance.x + playerInstance.width,
@@ -321,15 +329,6 @@ function checkInput() {
                 enemy.x + enemy.width / 2,
                 enemy.y + enemy.height / 2
             ));
-
-            // Visual feedback on enemy (maybe flash?)
-            // We remove enemy logic immediately so player can type next word, 
-            // but visually it stays until projectile hits? 
-            // Implementation choice: Remove logic immediately. Visual "ghost" or just remove.
-            // Simplest: Remove immediately, generate explosion at target location when projectile arrives?
-            // Actually, if we remove enemy, we lose target coords. 
-            // Better: Mark enemy as 'defeated' but keep updating for visual until projectile hits.
-            // For now: Just remove instantly and show projectile flying to empty spot for simplicity/response.
 
             createExplosion(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, '#ffff00');
             enemies.splice(matchIndex, 1);
@@ -340,7 +339,6 @@ function checkInput() {
         updateInputDisplay();
         scoreDisplay.textContent = score;
 
-        // Level Up
         if (score > 0 && score % 100 === 0) {
             level++;
             speedMultiplier += 0.1;
@@ -368,30 +366,25 @@ function update(deltaTime) {
     spawnTimer += deltaTime;
     if (spawnTimer > spawnInterval) {
         const word = WORD_LIST[Math.floor(Math.random() * WORD_LIST.length)];
-        // Ensure unique words on screen
         if (!enemies.some(e => e.word === word)) {
             enemies.push(new Enemy(word));
             spawnTimer = 0;
         }
     }
 
-    // Update Enemies
     for (let i = enemies.length - 1; i >= 0; i--) {
         const enemy = enemies[i];
         enemy.update(deltaTime);
 
-        // Game Over Condition
         if (enemy.x < playerInstance.x + 50) {
             gameOver();
         }
 
-        // Cleanup offscreen (shouldn't happen if game over triggers first, but safe guard)
         if (enemy.x + enemy.width < 0) {
             enemies.splice(i, 1);
         }
     }
 
-    // Update Projectiles
     for (let i = projectiles.length - 1; i >= 0; i--) {
         const p = projectiles[i];
         const hit = p.update(deltaTime);
@@ -400,7 +393,6 @@ function update(deltaTime) {
         }
     }
 
-    // Update Particles
     particles.forEach((p, index) => {
         p.update();
         if (p.life <= 0) particles.splice(index, 1);
@@ -408,9 +400,7 @@ function update(deltaTime) {
 }
 
 function draw() {
-    // Draw BG
-    // Ensure BG covers canvas
-    if (images.bg) {
+    if (images.bg && images.bg.complete) {
         ctx.drawImage(images.bg, 0, 0, canvas.width, canvas.height);
     } else {
         ctx.fillStyle = '#2d1b2e';
@@ -436,8 +426,8 @@ function loop(timestamp) {
 
 function startGame() {
     if (assetsLoaded < totalAssets) {
-        console.log("Waiting for assets...");
-        return;
+        // Fallback for immediate start even if loading fails
+        console.warn("Starting with potential missing assets");
     }
 
     isPlaying = true;
