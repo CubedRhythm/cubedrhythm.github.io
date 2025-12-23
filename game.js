@@ -73,7 +73,7 @@ let speedMultiplier = 1;
 let bgX = 0;
 let screenShake = 0;
 let terrainOffset = 0;
-let targetEnemyId = null; // ID of the enemy currently being typed
+let targetEnemyId = null;
 
 // Terrain Function
 function getGroundHeight(x) {
@@ -89,7 +89,7 @@ class Sprite {
         this.height = height;
         this.frameTimer = 0;
         this.currentFrame = 0;
-        this.frameInterval = 100; // Faster update for smooth animation
+        this.frameInterval = 100;
         this.facingLeft = false;
     }
 
@@ -101,7 +101,6 @@ class Player extends Sprite {
         super(canvas.width / 2 - 64, 0, 128, 128);
         this.state = 'RUNNING';
         this.attackTimer = 0;
-        // 4-frame run cycle
         this.runFrames = [images.cat_run_1, images.cat_run_2, images.cat_run_3, images.cat_run_4];
         this.attackFrame = images.cat_attack;
     }
@@ -110,8 +109,12 @@ class Player extends Sprite {
         // Stick to ground
         this.y = getGroundHeight(this.x + 64) - 100;
 
-        // Dynamic Facing
-        if (targetEnemyId) {
+        // Visual Logic: facingLeft only if attacking/targeting.
+        // If RUNNING/Walking, force Face Right (facingLeft = false)
+        if (this.state === 'RUNNING') {
+            this.facingLeft = false;
+        } else if (targetEnemyId) {
+            // Only flip when actively engaging a target (Attacking)
             const target = enemies.find(e => e.id === targetEnemyId);
             if (target) {
                 this.facingLeft = target.x < this.x;
@@ -140,7 +143,7 @@ class Player extends Sprite {
         if (type === 'melee') {
             this.attackTimer = 300;
         } else {
-            this.attackTimer = 100; // Fast twitch for rapid fire
+            this.attackTimer = 100;
         }
     }
 
@@ -149,7 +152,6 @@ class Player extends Sprite {
         if (this.state === 'ATTACKING') {
             img = this.attackFrame;
         } else {
-            // Safety check for array bounds
             if (this.currentFrame >= this.runFrames.length) this.currentFrame = 0;
             img = this.runFrames[this.currentFrame];
         }
@@ -170,15 +172,15 @@ class Projectile {
         this.x = startX;
         this.y = startY;
         this.targetEnemy = targetEnemy;
-        this.speed = 1500; // Very fast
+        this.speed = 1500;
         this.active = true;
         this.rotation = 0;
         this.isKillShot = isKillShot;
-        this.scale = 1.5; // Bigger shuriken
+        this.scale = 1.5;
     }
 
     update(deltaTime) {
-        if (!this.targetEnemy) { // If enemy gone (cleaned up), projectile fizzles
+        if (!this.targetEnemy) {
             this.active = false;
             return;
         }
@@ -192,12 +194,9 @@ class Projectile {
 
         if (dist < 40) {
             this.active = false;
-
-            // Impact Effect
-            createExplosion(targetX, targetY, 'spark'); // Spark on hit
+            createExplosion(targetX, targetY, 'spark');
 
             if (this.isKillShot) {
-                // Kill enemy
                 const index = enemies.indexOf(this.targetEnemy);
                 if (index !== -1) {
                     createExplosion(targetX, targetY, 'blood');
@@ -205,11 +204,8 @@ class Projectile {
                     score += 10;
                     screenShake = 5;
                     checkLevelUp();
-                    targetEnemyId = null; // Clear target
+                    targetEnemyId = null;
                 }
-            } else {
-                // Non-kill hit: Flash enemy?
-                // Just visual feedback
             }
             return;
         }
@@ -224,12 +220,11 @@ class Projectile {
         ctx.save();
         ctx.translate(this.x, this.y);
         ctx.rotate(this.rotation * Math.PI * 2);
-        ctx.scale(this.scale, this.scale); // Make bigger
+        ctx.scale(this.scale, this.scale);
         ctx.fillStyle = '#eee';
         ctx.lineWidth = 2;
         ctx.strokeStyle = '#111';
         ctx.beginPath();
-        // Shuriken
         ctx.moveTo(0, -10);
         ctx.lineTo(3, -3);
         ctx.lineTo(10, 0);
@@ -249,7 +244,7 @@ class Enemy extends Sprite {
     constructor(word, side) {
         let startX = side === 'left' ? -150 : canvas.width + 150;
         super(startX, 0, 128, 128);
-        this.id = Math.random().toString(36).substr(2, 9); // Unique ID
+        this.id = Math.random().toString(36).substr(2, 9);
         this.word = word;
         this.side = side;
         this.speed = (150 + (level * 15)) * speedMultiplier;
@@ -263,9 +258,10 @@ class Enemy extends Sprite {
         const playerX = playerInstance.x;
         const distToPlayer = Math.abs(this.x - playerX);
 
-        // Always face player (Visual)
-        // If x < playerX (Left side), face Right
-        // If x > playerX (Right side), face Left
+        // Facing Logic:
+        // Source sprite faces LEFT.
+        // If x > playerX (Right side, moving Left): Face LEFT (Normal).
+        // If x < playerX (Left side, moving Right): Face RIGHT (Flip).
         this.facingLeft = (this.x > playerX);
 
         if (this.side === 'left') {
@@ -304,15 +300,14 @@ class Enemy extends Sprite {
         const img = this.walkFrames[this.currentFrame];
 
         ctx.save();
+        // Drawing Logic Correction:
+        // Sprite source faces Left.
+        // If this.facingLeft is TRUE, we want to draw it normally (Left).
+        // If this.facingLeft is FALSE, we want to Flip it (Right).
+
         if (this.facingLeft) {
-            // Normal for right-facing sprites is facing Right? Wait.
-            // Standard sprites face Left usually in pixel art games? Or Right?
-            // Assuming source faces LEFT based on earlier logic.
-            // If source Left:
-            // facingLeft=true -> draw normal
             ctx.drawImage(img, this.x, this.y, this.width, this.height);
         } else {
-            // Face Right -> Flip
             ctx.translate(this.x + this.width, this.y);
             ctx.scale(-1, 1);
             ctx.drawImage(img, 0, 0, this.width, this.height);
@@ -329,7 +324,6 @@ class Enemy extends Sprite {
         const textY = this.y - 12;
 
         if (this.id === targetEnemyId) {
-            // Typing this one
             const totalWidth = ctx.measureText(this.word).width;
             const startX = centerX - totalWidth / 2;
             const matchedPart = this.word.substring(0, currentInput.length);
@@ -392,13 +386,10 @@ function createExplosion(x, y, type) {
 window.addEventListener('keydown', (e) => {
     if (!isPlaying) return;
 
-    // Ignore Backspace for gameplay flow in this style? 
-    // Rapid fire usually commits only forward. But let's keep it just in case.
     if (e.key === 'Backspace') {
         currentInput = currentInput.slice(0, -1);
         updateInputDisplay();
 
-        // If we backspace until empty, drop target
         if (currentInput.length === 0) targetEnemyId = null;
         return;
     }
@@ -407,25 +398,22 @@ window.addEventListener('keydown', (e) => {
         const char = e.key.toLowerCase();
 
         if (!targetEnemyId) {
-            // Find a new target that starts with this char
-            const visibleEnemies = enemies.filter(e => e.x > -200 && e.x < canvas.width + 200); // Only target nearby?
+            const visibleEnemies = enemies.filter(e => e.x > -200 && e.x < canvas.width + 200);
             const match = visibleEnemies.find(e => e.word.startsWith(char));
             if (match) {
                 targetEnemyId = match.id;
                 currentInput += char;
-                fireShot(match, 1); // Shot for first letter
+                fireShot(match, 1);
             }
         } else {
-            // Validate against current target
             const target = enemies.find(e => e.id === targetEnemyId);
             if (target) {
                 const requiredChar = target.word[currentInput.length];
                 if (char === requiredChar) {
                     currentInput += char;
-                    fireShot(target, currentInput.length); // Shot for next letter
+                    fireShot(target, currentInput.length);
                 }
             } else {
-                // Target disappeared? Reset
                 targetEnemyId = null;
                 currentInput = "";
             }
@@ -437,8 +425,6 @@ window.addEventListener('keydown', (e) => {
 });
 
 function fireShot(target, index) {
-    // Rapid fire projectile
-    // isKillShot = true if this is the last letter
     const isKill = (index === target.word.length);
     const startX = playerInstance.x + 64;
     const startY = playerInstance.y + 64;
@@ -456,14 +442,8 @@ function checkCompletion() {
 
     const target = enemies.find(e => e.id === targetEnemyId);
     if (target && currentInput === target.word) {
-        // Word complete
-        // Reset input immediately for next word
         currentInput = "";
         updateInputDisplay();
-        // Target ID cleared handled by projectile kill logic OR here to allow switching?
-        // Better to clear it here so we can start typing next while projectile flies.
-        // Wait, if we clear targetId, projectile might lose tracking references or target might not die?
-        // Projectile holds reference to enemy object, so it's fine.
         targetEnemyId = null;
     }
 }
@@ -500,7 +480,6 @@ function update(deltaTime) {
     spawnTimer += deltaTime;
     if (spawnTimer > spawnInterval) {
         const word = WORD_LIST[Math.floor(Math.random() * WORD_LIST.length)];
-        // Unique words only
         if (!enemies.some(e => e.word === word)) {
             const side = Math.random() < 0.5 ? 'left' : 'right';
             enemies.push(new Enemy(word, side));
