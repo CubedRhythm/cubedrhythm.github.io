@@ -34,6 +34,8 @@ const assetsToLoad = {
     dino_walk_2: 'assets/dino_realistic_walk_2.png',
     ptero_fly_1: 'assets/ptero_fly_1.png',
     ptero_fly_2: 'assets/ptero_fly_2.png',
+    ptero_fly_3: 'assets/ptero_fly_3.png',
+    ptero_fly_4: 'assets/ptero_fly_4.png',
     bg: 'assets/background_jungle.png'
 };
 
