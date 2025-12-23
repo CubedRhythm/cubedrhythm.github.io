@@ -16,10 +16,10 @@ const restartBtn = document.getElementById('restart-btn');
 const GROUND_Y = 50;
 const MELEE_RANGE = 300;
 const WORD_LIST = [
-    "cat", "dog", "run", "jump", "fast", "ninja", "zombie", "dino", "byte", "code",
-    "pixel", "slash", "claw", "roar", "hunt", "prey", "night", "moon", "star", "sky",
-    "shadow", "stealth", "fight", "brave", "honor", "sword", "kicks", "punch", "dash",
-    "thunder", "storm", "power", "magic", "super", "hyper", "mega", "ultra", "epic"
+    "run", "hunt", "bite", "claw", "roar", "prey", "flesh", "bone", "skull", "blood",
+    "fury", "rage", "kill", "gore", "teeth", "snap", "tear", "rip", "shred", "maul",
+    "dead", "gone", "lost", "fear", "doom", "grim", "dark", "evil", "vile", "beast",
+    "monster", "demon", "devil", "hell", "pain", "hurt", "wound", "slash", "cut"
 ];
 
 // Assets
@@ -28,10 +28,15 @@ const assetsToLoad = {
     cat_run_1: 'assets/cat_run_1.png',
     cat_run_2: 'assets/cat_run_2.png',
     cat_attack: 'assets/cat_attack.png',
-    dino_walk_1: 'assets/zombie_dino.png',
-    dino_walk_2: 'assets/zombie_dino.png',
-    bg: 'assets/background.png'
+    // New Realistic Assets (Fallback to zombie ones if not ready yet)
+    dino_walk_1: 'assets/dino_realistic_walk_1.png',
+    dino_walk_2: 'assets/dino_realistic_walk_2.png',
+    bg: 'assets/background_jungle.png'
 };
+
+// Fallback logic handled in load or draw if they fail? 
+// For now we try to load them. If they fail, we might see empty or errors.
+// Prudent to check or have fallbacks.
 
 let assetsLoaded = 0;
 const totalAssets = Object.keys(assetsToLoad).length;
@@ -45,7 +50,7 @@ function loadAssets(callback) {
             if (assetsLoaded === totalAssets) callback();
         };
         img.onerror = () => {
-            console.warn(`Failed to load ${src}`);
+            console.warn(`Failed to load ${src}, using fallback`);
             assetsLoaded++;
             if (assetsLoaded === totalAssets) callback();
         }
@@ -92,14 +97,13 @@ class Player extends Sprite {
         this.baseY = this.y;
         this.state = 'RUNNING';
         this.attackTimer = 0;
-        this.bobTimer = 0; // For bobbing effect
+        this.bobTimer = 0;
 
         this.runFrames = [images.cat_run_1, images.cat_run_2];
         this.attackFrame = images.cat_attack;
     }
 
     update(deltaTime) {
-        // Bobbing Effect
         this.bobTimer += deltaTime * 0.01;
         this.y = this.baseY + Math.sin(this.bobTimer) * 5;
 
@@ -112,7 +116,6 @@ class Player extends Sprite {
             }
         }
 
-        // Attack Logic
         if (this.state === 'ATTACKING') {
             this.attackTimer -= deltaTime;
             if (this.attackTimer <= 0) {
@@ -182,7 +185,7 @@ class Projectile {
         ctx.lineWidth = 2;
         ctx.strokeStyle = '#333';
         ctx.beginPath();
-        // Four point star
+        // Shuriken
         ctx.moveTo(0, -10);
         ctx.lineTo(3, -3);
         ctx.lineTo(10, 0);
@@ -221,7 +224,7 @@ class Enemy extends Sprite {
         if (img && img.complete && img.naturalHeight !== 0) {
             ctx.drawImage(img, this.x, this.y, this.width, this.height);
         } else {
-            ctx.fillStyle = 'green';
+            ctx.fillStyle = '#556b2f'; // Dark Olive Green Fallback
             ctx.fillRect(this.x, this.y, this.width, this.height);
         }
 
@@ -243,7 +246,7 @@ class Enemy extends Sprite {
             const restPart = this.word.substring(currentInput.length);
 
             ctx.textAlign = 'left';
-            ctx.fillStyle = '#ffff00';
+            ctx.fillStyle = '#ff0000'; // Red highlight for gritty feel
             ctx.fillText(matchedPart, startX, textY);
 
             const matchedWidth = ctx.measureText(matchedPart).width;
@@ -257,20 +260,38 @@ class Enemy extends Sprite {
     }
 }
 
+// Visceral Blood Particles
 class Particle {
-    constructor(x, y, color) {
+    constructor(x, y, type) {
         this.x = x;
         this.y = y;
-        this.size = Math.random() * 5 + 5;
-        this.speedX = (Math.random() - 0.5) * 10;
-        this.speedY = (Math.random() - 0.5) * 10;
-        this.color = color;
+        this.type = type; // 'blood' or 'spark'
+        this.size = Math.random() * 4 + 2;
+        this.speedX = (Math.random() - 0.5) * 15; // Fast burst
+        this.speedY = (Math.random() - 1) * 15;   // Upward burst
+        this.gravity = 0.8;
         this.life = 1.0;
+
+        if (type === 'blood') {
+            // Variable blood reds
+            const shade = Math.floor(Math.random() * 50);
+            this.color = `rgb(${150 + shade}, 0, 0)`;
+        } else {
+            this.color = '#ffff00';
+        }
     }
     update() {
         this.x += this.speedX;
         this.y += this.speedY;
-        this.life -= 0.05;
+        this.speedY += this.gravity; // Gravity apply
+        this.life -= 0.02;
+
+        // Ground splatter (stop at ground)
+        if (this.y > canvas.height - GROUND_Y) {
+            this.y = canvas.height - GROUND_Y;
+            this.speedY = 0;
+            this.speedX *= 0.8; // Friction
+        }
     }
     draw() {
         ctx.fillStyle = this.color;
@@ -280,9 +301,10 @@ class Particle {
     }
 }
 
-function createExplosion(x, y, color) {
-    for (let i = 0; i < 8; i++) {
-        particles.push(new Particle(x, y, color));
+function createExplosion(x, y, type) {
+    const count = type === 'blood' ? 20 : 8;
+    for (let i = 0; i < count; i++) {
+        particles.push(new Particle(x, y, type));
     }
 }
 
@@ -315,10 +337,10 @@ function checkInput() {
 
         if (dist < MELEE_RANGE) {
             playerInstance.attack('melee');
-            createExplosion(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, '#ff0044'); // Blood red effect
+            createExplosion(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, 'blood');
             enemies.splice(matchIndex, 1);
             score += 20;
-            screenShake = 10; // Intense shake for melee
+            screenShake = 15; // Violent shake
         } else {
             playerInstance.attack('range');
             projectiles.push(new Projectile(
@@ -327,11 +349,9 @@ function checkInput() {
                 enemy.x + enemy.width / 2,
                 enemy.y + enemy.height / 2
             ));
-
-            createExplosion(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, '#ffff00');
             enemies.splice(matchIndex, 1);
             score += 10;
-            screenShake = 5; // Light shake for hit
+            screenShake = 5;
         }
 
         currentInput = "";
@@ -353,7 +373,7 @@ function resize() {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
     if (playerInstance) {
-        playerInstance.y = canvas.height - GROUND_Y - 128; // Keep aligned with bottom
+        playerInstance.y = canvas.height - GROUND_Y - 128;
         playerInstance.baseY = playerInstance.y;
     }
 }
@@ -362,11 +382,9 @@ window.addEventListener('resize', resize);
 function update(deltaTime) {
     if (playerInstance) playerInstance.update(deltaTime);
 
-    // Update BG
-    bgX -= 100 * (deltaTime / 1000); // Scroll speed
+    bgX -= 60 * (deltaTime / 1000); // Slower, heavier feel
     if (bgX <= -canvas.width) bgX = 0;
 
-    // Reduce shake
     if (screenShake > 0) {
         screenShake -= 0.5;
         if (screenShake < 0) screenShake = 0;
@@ -375,7 +393,6 @@ function update(deltaTime) {
     spawnTimer += deltaTime;
     if (spawnTimer > spawnInterval) {
         const word = WORD_LIST[Math.floor(Math.random() * WORD_LIST.length)];
-        // Ensure unique words on screen
         if (!enemies.some(e => e.word === word)) {
             enemies.push(new Enemy(word));
             spawnTimer = 0;
@@ -397,8 +414,19 @@ function update(deltaTime) {
 
     for (let i = projectiles.length - 1; i >= 0; i--) {
         const p = projectiles[i];
-        const hit = p.update(deltaTime);
-        if (hit || !p.active) {
+        p.update(deltaTime);
+        // Projectile hit logic moved to create blood at location?
+        // Actually, we remove enemy immediately for gameplay flow, 
+        // so projectile just flies off or we could fake a hit effect when it reaches target spot.
+        // For 'gritty' feel, maybe instant hitscan is better?
+        // Let's keep projectile visual but spawn blood immediately at enemy location for responsiveness.
+        // Or make projectile travel fast.
+
+        // Since we removed enemy already, we can just let projectile fly off screen or fizzle.
+        // Let's just remove projectile if it goes off screen.
+        if (p.x > canvas.width) p.active = false;
+
+        if (!p.active) {
             projectiles.splice(i, 1);
         }
     }
@@ -412,20 +440,17 @@ function update(deltaTime) {
 function draw() {
     ctx.save();
 
-    // Apply shake
     if (screenShake > 0) {
         const dx = (Math.random() - 0.5) * screenShake;
         const dy = (Math.random() - 0.5) * screenShake;
         ctx.translate(dx, dy);
     }
 
-    // Draw Scrolling BG
     if (images.bg && images.bg.complete) {
-        // Draw twice to loop
         ctx.drawImage(images.bg, bgX, 0, canvas.width, canvas.height);
         ctx.drawImage(images.bg, bgX + canvas.width, 0, canvas.width, canvas.height);
     } else {
-        ctx.fillStyle = '#2d1b2e';
+        ctx.fillStyle = '#1a1510'; // Dark gritty brown fallback
         ctx.fillRect(0, 0, canvas.width, canvas.height);
     }
 
@@ -450,7 +475,6 @@ function loop(timestamp) {
 
 function startGame() {
     if (assetsLoaded < totalAssets) {
-        // Fallback for immediate start even if loading fails
         console.warn("Starting with potential missing assets");
     }
 
