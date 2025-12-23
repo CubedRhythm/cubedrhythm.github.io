@@ -6,233 +6,270 @@ const startScreen = document.getElementById('start-screen');
 const gameUI = document.getElementById('game-ui');
 const gameOverScreen = document.getElementById('game-over-screen');
 const scoreDisplay = document.getElementById('score');
-const streakDisplay = document.getElementById('streak');
+const levelDisplay = document.getElementById('level'); // Add this to HTML if missing, or use valid ID
 const finalScoreDisplay = document.getElementById('final-score');
+const inputDisplay = document.getElementById('input-display');
 const startBtn = document.getElementById('start-btn');
 const restartBtn = document.getElementById('restart-btn');
+
+// Game Constants
+const GRAVITY = 0.5;
+const GROUND_Y = 50; // Distance from bottom
+const WORD_LIST = [
+    "cat", "dog", "run", "jump", "fast", "ninja", "zombie", "dino", "byte", "code",
+    "pixel", "slash", "claw", "roar", "hunt", "prey", "night", "moon", "star", "sky",
+    "shadow", "stealth", "fight", "brave", "honor", "sword", "kicks", "punch", "dash",
+    "thunder", "storm", "power", "magic", "super", "hyper", "mega", "ultra", "epic"
+];
+
+// Assets
+const images = {};
+const assetsToLoad = {
+    player: 'assets/ninja_cat.png',
+    enemy: 'assets/zombie_dino.png',
+    bg: 'assets/background.png'
+};
+
+let assetsLoaded = 0;
+const totalAssets = Object.keys(assetsToLoad).length;
+
+function loadAssets(callback) {
+    for (const [key, src] of Object.entries(assetsToLoad)) {
+        const img = new Image();
+        img.src = src;
+        img.onload = () => {
+            assetsLoaded++;
+            if (assetsLoaded === totalAssets) callback();
+        };
+        images[key] = img;
+    }
+}
 
 // Game State
 let isPlaying = false;
 let score = 0;
-let streak = 0;
+let level = 1;
+let enemies = [];
+let particles = [];
+let spawnTimer = 0;
+let spawnInterval = 2000;
 let animationId;
 let lastTime = 0;
-let spawnTimer = 0;
-let spawnInterval = 1000; // Initial spawn rate in ms
-let speedMultiplier = 1;
+let currentInput = "";
 
-// Audio Context
-const AudioContext = window.AudioContext || window.webkitAudioContext;
-const audioCtx = new AudioContext();
+// Entities
+class Sprite {
+    constructor(image, x, y, width, height) {
+        this.image = image;
+        this.x = x;
+        this.y = y;
+        this.width = width;
+        this.height = height;
+    }
 
-// Game Objects
-const player = {
-    x: 0,
-    y: 0,
-    width: 100,
-    height: 20,
-    color: '#3b82f6', // Blue-500
-    speed: 10
-};
-
-let cubes = [];
-let particles = [];
-
-// Resize Canvas
-function resize() {
-    canvas.width = document.getElementById('game-container').offsetWidth;
-    canvas.height = document.getElementById('game-container').offsetHeight;
-    player.y = canvas.height - 50;
-    player.x = canvas.width / 2 - player.width / 2;
-}
-window.addEventListener('resize', resize);
-resize();
-
-// Input Handling
-let keys = {};
-window.addEventListener('keydown', e => keys[e.code] = true);
-window.addEventListener('keyup', e => keys[e.code] = false);
-
-// Mouse/Touch Control
-canvas.addEventListener('mousemove', e => {
-    if (!isPlaying) return;
-    const rect = canvas.getBoundingClientRect();
-    const mouseX = e.clientX - rect.left;
-    player.x = mouseX - player.width / 2;
-    // Clamp to screen
-    if (player.x < 0) player.x = 0;
-    if (player.x + player.width > canvas.width) player.x = canvas.width - player.width;
-});
-
-// Sound Synthesis
-function playSound(type) {
-    if (audioCtx.state === 'suspended') audioCtx.resume();
-    const osc = audioCtx.createOscillator();
-    const gain = audioCtx.createGain();
-    osc.connect(gain);
-    gain.connect(audioCtx.destination);
-
-    if (type === 'catch') {
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(440, audioCtx.currentTime);
-        osc.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime + 0.1);
-        gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
-        osc.start();
-        osc.stop(audioCtx.currentTime + 0.1);
-    } else if (type === 'miss') {
-        osc.type = 'triangle'; // Softer than sawtooth
-        osc.frequency.setValueAtTime(150, audioCtx.currentTime);
-        osc.frequency.linearRampToValueAtTime(100, audioCtx.currentTime + 0.2);
-        gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
-        osc.start();
-        osc.stop(audioCtx.currentTime + 0.2);
+    draw() {
+        ctx.drawImage(this.image, this.x, this.y, this.width, this.height);
     }
 }
 
-// Classes
-class Cube {
+class Player extends Sprite {
     constructor() {
-        this.size = 40;
-        this.x = Math.random() * (canvas.width - this.size);
-        this.y = -this.size;
-        this.speed = (3 + Math.random() * 2) * speedMultiplier;
-        // Pastel Colors
-        const hues = [0, 200, 150, 45, 280]; // Red, Blue, Green, Orange, Purple
-        const hue = hues[Math.floor(Math.random() * hues.length)];
-        this.color = `hsl(${hue}, 70%, 60%)`;
-        this.active = true;
+        // Assuming sprite is roughly square-ish, adjust based on actual image aspect ratio
+        // Default size 64x64 scaled up
+        super(images.player, 100, canvas.height - GROUND_Y - 128, 128, 128);
+        this.baseY = this.y;
+        this.isAttacking = false;
+        this.attackTimer = 0;
     }
 
-    update() {
-        this.y += this.speed;
-        if (this.y > canvas.height) {
-            this.active = false;
-            handleMiss();
+    update(deltaTime) {
+        if (this.isAttacking) {
+            this.attackTimer -= deltaTime;
+            if (this.attackTimer <= 0) {
+                this.isAttacking = false;
+                this.x = 100; // Reset position
+            }
+        }
+    }
+
+    attack() {
+        this.isAttacking = true;
+        this.attackTimer = 200; // ms
+        this.x = 120; // Small lunge forward
+        createExplosion(this.x + this.width, this.y + this.height / 2, '#fff');
+    }
+}
+
+class Enemy extends Sprite {
+    constructor(word) {
+        super(images.enemy, canvas.width, canvas.height - GROUND_Y - 128, 128, 128);
+        this.word = word;
+        this.speed = 100 + (level * 10); // Pixels per second
+        this.markedForDeletion = false;
+    }
+
+    update(deltaTime) {
+        this.x -= this.speed * (deltaTime / 1000);
+        if (this.x + this.width < 0) {
+            // Missed enemy (game over logic handled in main loop collision)
         }
     }
 
     draw() {
-        ctx.fillStyle = this.color;
-        // Removed shadowBlur for flat design
-        ctx.fillRect(this.x, this.y, this.size, this.size);
+        super.draw();
+
+        // Draw Word
+        ctx.font = '20px "Press Start 2P"';
+        ctx.textAlign = 'center';
+
+        // Background for text
+        const textWidth = ctx.measureText(this.word).width;
+        ctx.fillStyle = 'rgba(0,0,0,0.5)';
+        ctx.fillRect(this.x + this.width / 2 - textWidth / 2 - 5, this.y - 30, textWidth + 10, 30);
+
+        // Text
+        ctx.fillStyle = '#fff';
+        if (this.word.startsWith(currentInput) && currentInput.length > 0) {
+            ctx.fillStyle = '#ffff00'; // Highlight matched part logic handled in main draw loop usually, 
+            // but here we just show the word. 
+            // Better matching visualization:
+
+            const matchLen = currentInput.length;
+            const matchStr = this.word.substring(0, matchLen);
+            const restStr = this.word.substring(matchLen);
+
+            // Simplified: Just draw white. Advanced highlighting requires separate draws.
+        }
+        ctx.fillText(this.word, this.x + this.width / 2, this.y - 10);
     }
 }
 
+// Particles
 class Particle {
     constructor(x, y, color) {
         this.x = x;
         this.y = y;
-        this.size = Math.random() * 5 + 2;
+        this.size = Math.random() * 5 + 5;
         this.speedX = (Math.random() - 0.5) * 10;
         this.speedY = (Math.random() - 0.5) * 10;
         this.color = color;
         this.life = 1.0;
     }
-
     update() {
         this.x += this.speedX;
         this.y += this.speedY;
         this.life -= 0.05;
     }
-
     draw() {
-        ctx.globalAlpha = this.life;
         ctx.fillStyle = this.color;
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-        ctx.fill();
+        ctx.globalAlpha = this.life;
+        ctx.fillRect(this.x, this.y, this.size, this.size); // Square for pixel look
         ctx.globalAlpha = 1.0;
     }
 }
 
-// Game Logic
-function spawnCube() {
-    cubes.push(new Cube());
-}
-
 function createExplosion(x, y, color) {
-    for (let i = 0; i < 10; i++) {
+    for (let i = 0; i < 8; i++) {
         particles.push(new Particle(x, y, color));
     }
 }
 
-function handleCatch(cube) {
-    score += 10 + Math.floor(streak / 5) * 5;
-    streak++;
-    scoreDisplay.textContent = score;
-    streakDisplay.textContent = streak;
-    playSound('catch');
-    createExplosion(cube.x + cube.size / 2, cube.y + cube.size / 2, cube.color);
+// Input Handling
+window.addEventListener('keydown', (e) => {
+    if (!isPlaying) return;
 
-    // Increase difficulty
-    if (score % 100 === 0) {
-        speedMultiplier += 0.1;
-        spawnInterval = Math.max(200, spawnInterval - 50);
+    // Allow Backspace
+    if (e.key === 'Backspace') {
+        currentInput = currentInput.slice(0, -1);
+        updateInputDisplay();
+        return;
+    }
+
+    // Only allow letters
+    if (e.key.length === 1 && e.key.match(/[a-z]/i)) {
+        currentInput += e.key.toLowerCase();
+        updateInputDisplay();
+        checkInput();
+    }
+});
+
+function updateInputDisplay() {
+    inputDisplay.textContent = currentInput.toUpperCase();
+}
+
+function checkInput() {
+    const matchIndex = enemies.findIndex(e => e.word === currentInput);
+    if (matchIndex !== -1) {
+        // Hit!
+        const enemy = enemies[matchIndex];
+        createExplosion(enemy.x + enemy.width / 2, enemy.y + enemy.height / 2, '#0f0');
+        enemies.splice(matchIndex, 1);
+        currentInput = "";
+        updateInputDisplay();
+        score += 10;
+        scoreDisplay.textContent = score;
+
+        // Level logic
+        if (score > 0 && score % 100 === 0) {
+            level++;
+            levelDisplay.textContent = level; // Assuming element exists
+            spawnInterval = Math.max(500, spawnInterval - 100);
+        }
+
+        // Player animation
+        if (playerInstance) playerInstance.attack();
     }
 }
 
-function handleMiss() {
-    streak = 0;
-    streakDisplay.textContent = streak;
-    playSound('miss');
-    gameOver();
+// Main Loop
+let playerInstance;
+
+function resize() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    if (playerInstance) {
+        playerInstance.y = canvas.height - GROUND_Y - 128;
+        playerInstance.baseY = playerInstance.y;
+    }
 }
+window.addEventListener('resize', resize);
 
 function update(deltaTime) {
-    // Player Movement (Keyboard)
-    if (keys['ArrowLeft'] || keys['KeyA']) {
-        player.x -= player.speed;
-    }
-    if (keys['ArrowRight'] || keys['KeyD']) {
-        player.x += player.speed;
-    }
-    // Clamp
-    if (player.x < 0) player.x = 0;
-    if (player.x + player.width > canvas.width) player.x = canvas.width - player.width;
+    playerInstance.update(deltaTime);
 
-    // Spawning
+    // Spawn Enemies
     spawnTimer += deltaTime;
     if (spawnTimer > spawnInterval) {
-        spawnCube();
-        spawnTimer = 0;
+        const word = WORD_LIST[Math.floor(Math.random() * WORD_LIST.length)];
+        // Ensure no duplicate words on screen
+        if (!enemies.some(e => e.word === word)) {
+            enemies.push(new Enemy(word));
+            spawnTimer = 0;
+        }
     }
 
-    // Update Cubes
-    cubes.forEach(cube => cube.update());
-    cubes = cubes.filter(c => c.active);
-
-    // Collision Detection
-    cubes.forEach(cube => {
-        if (
-            cube.x < player.x + player.width &&
-            cube.x + cube.size > player.x &&
-            cube.y < player.y + player.height &&
-            cube.y + cube.size > player.y
-        ) {
-            cube.active = false;
-            handleCatch(cube);
+    // Update Enemies
+    enemies.forEach(enemy => {
+        enemy.update(deltaTime);
+        // Collision with player
+        if (enemy.x < playerInstance.x + playerInstance.width - 40) { // Simple overlap
+            gameOver();
         }
     });
 
     // Update Particles
-    particles.forEach(p => p.update());
-    particles = particles.filter(p => p.life > 0);
+    particles.forEach((p, index) => {
+        p.update();
+        if (p.life <= 0) particles.splice(index, 1);
+    });
 }
 
 function draw() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    // Draw BG
+    ctx.drawImage(images.bg, 0, 0, canvas.width, canvas.height); // Simple stretch for now
 
-    // Draw Player
-    ctx.fillStyle = player.color;
-    // Removed shadowBlur for flat design
-    ctx.fillRect(player.x, player.y, player.width, player.height);
-
-    // Draw Cubes
-    cubes.forEach(c => c.draw());
-
-    // Draw Particles
+    playerInstance.draw();
+    enemies.forEach(e => e.draw());
     particles.forEach(p => p.draw());
 }
 
@@ -248,15 +285,22 @@ function loop(timestamp) {
 }
 
 function startGame() {
+    if (assetsLoaded < totalAssets) {
+        console.log("Waiting for assets...");
+        return;
+    }
+
     isPlaying = true;
     score = 0;
-    streak = 0;
-    speedMultiplier = 1;
-    spawnInterval = 1000;
-    cubes = [];
+    level = 1;
+    enemies = [];
     particles = [];
-    scoreDisplay.textContent = '0';
-    streakDisplay.textContent = '0';
+    currentInput = "";
+    spawnInterval = 2000;
+
+    scoreDisplay.textContent = score;
+    levelDisplay.textContent = level;
+    updateInputDisplay();
 
     startScreen.classList.remove('active');
     startScreen.classList.add('hidden');
@@ -264,6 +308,9 @@ function startGame() {
     gameOverScreen.classList.add('hidden');
     gameUI.classList.remove('hidden');
     gameUI.classList.add('active');
+
+    playerInstance = new Player();
+    resize();
 
     lastTime = performance.now();
     loop(lastTime);
@@ -279,24 +326,13 @@ function gameOver() {
     gameOverScreen.classList.add('active');
 }
 
-// Event Listeners
+// Init
 startBtn.addEventListener('click', startGame);
 restartBtn.addEventListener('click', startGame);
 
-// Initialize UI State
-function init() {
-    startScreen.classList.remove('hidden');
-    startScreen.classList.add('active');
-    gameUI.classList.remove('active');
-    gameUI.classList.add('hidden');
-    gameOverScreen.classList.remove('active');
-    gameOverScreen.classList.add('hidden');
-
-    // Force resize
+loadAssets(() => {
+    console.log("Assets loaded");
     resize();
-
-    console.log("Game Initialized");
-}
-
-// Run init
-init();
+    // Initial draw to show BG?
+    ctx.drawImage(images.bg, 0, 0, canvas.width, canvas.height);
+});

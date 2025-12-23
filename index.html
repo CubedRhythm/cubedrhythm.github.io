@@ -4,24 +4,28 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cubed Rhythm</title>
+    <title>Ninja Cat vs Zombie Dinos</title>
     <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
 </head>
 
-<body style="margin: 0; overflow: hidden; background: #f0f2f5; height: 100vh;">
-    <div id="game-container" style="position: relative; width: 100%; height: 100%;">
-        <canvas id="gameCanvas" style="display: block; width: 100%; height: 100%;"></canvas>
+<body>
+    <div id="game-container">
+        <canvas id="gameCanvas"></canvas>
 
         <div id="ui-layer">
             <div id="start-screen" class="screen active">
-                <h1 class="title">CUBED RHYTHM</h1>
-                <p class="instruction">Use Left/Right Arrows or Mouse to Catch the Cubes</p>
+                <h1 class="title">NINJA CAT<br>VS<br>ZOMBIE DINOSAURS</h1>
+                <p class="instruction">TYPE TO ATTACK!</p>
                 <button id="start-btn" class="btn">START GAME</button>
             </div>
 
             <div id="game-ui" class="screen hidden">
-                <div class="score-board">SCORE: <span id="score">0</span></div>
-                <div class="streak-board">STREAK: <span id="streak">0</span></div>
+                <div class="hud-top">
+                    <div class="score-box">SCORE: <span id="score">0</span></div>
+                    <div class="level-box">LEVEL: <span id="level">1</span></div>
+                </div>
+                <div id="input-display" class="input-display"></div>
             </div>
 
             <div id="game-over-screen" class="screen hidden">
