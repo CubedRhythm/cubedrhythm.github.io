@@ -4,28 +4,79 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Primal Ninja: Dino Survivor</title>
+    <title>Cubed Rhythm Arcade</title>
     <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;700;900&display=swap" rel="stylesheet">
 </head>
 
-<body class="landing-page">
-    <div class="landing-content">
-        <h1 class="landing-title">PRIMAL<br><span class="highlight">NINJA</span></h1>
-        <h2 class="landing-subtitle">DINO SURVIVOR</h2>
+<body class="platform-body">
 
-        <div class="features">
-            <p>TYPE TO SURVIVE</p>
-            <p>VISCERAL COMBAT</p>
-            <p>RELENTLESS HORDE</p>
+    <nav class="navbar">
+        <div class="logo">CUBED RHYTHM <span class="highlight">ARCADE</span></div>
+        <div class="nav-links">
+            <a href="#" class="active">GAMES</a>
+            <a href="#">ABOUT</a>
+            <a href="#">COMMUNITY</a>
         </div>
+    </nav>
 
-        <a href="play.html" class="cta-button">ENTER THE JUNGLE</a>
-
-        <div class="controls-hint">
-            <p>KEYBOARD REQUIRED</p>
+    <header class="hero-section">
+        <div class="hero-content">
+            <span class="tag">FEATURED GAME</span>
+            <h1 class="hero-title">PRIMAL <span class="highlight">NINJA</span></h1>
+            <p class="hero-desc">Survive the prehistoric horde. Type to Kill.</p>
+            <a href="play.html" class="play-btn">PLAY NOW</a>
         </div>
-    </div>
+        <div class="hero-visual">
+            <img src="assets/ninja_cat.png" class="hero-char" alt="Ninja Cat">
+            <!-- Background handled by CSS -->
+        </div>
+    </header>
+
+    <section class="game-grid-section">
+        <h2 class="section-title">ALL GAMES</h2>
+        <div class="game-grid">
+            <!-- Card 1: Primal Ninja -->
+            <a href="play.html" class="game-card">
+                <div class="card-image" style="background-image: url('assets/background_jungle.png');">
+                    <div class="card-overlay"></div>
+                </div>
+                <div class="card-info">
+                    <h3>PRIMAL NINJA</h3>
+                    <p>Dino Survival Typing Game</p>
+                    <span class="rating">★★★★★</span>
+                </div>
+            </a>
+
+            <!-- Card 2: Placeholder -->
+            <div class="game-card disabled">
+                <div class="card-image coming-soon">
+                    <span>COMING SOON</span>
+                </div>
+                <div class="card-info">
+                    <h3>CUBED RHYTHM</h3>
+                    <p>Rhythm Action</p>
+                </div>
+            </div>
+
+            <!-- Card 3: Placeholder -->
+            <div class="game-card disabled">
+                <div class="card-image coming-soon">
+                    <span>COMING SOON</span>
+                </div>
+                <div class="card-info">
+                    <h3>NEON DRIFT</h3>
+                    <p>Racing</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer class="site-footer">
+        <p>© 2025 Cubed Rhythm Arcade. All Rights Reserved.</p>
+    </footer>
+
 </body>
 
 </html>
