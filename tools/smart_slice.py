@@ -78,7 +78,12 @@ def smart_slice(sheet_path, output_dir, output_prefix):
                                      stack.append((nx, ny))
                 
                 # Blob defined
-                if (max_x - min_x) > 10 and (max_y - min_y) > 10: # Filter tiny noise
+                width_blob = max_x - min_x
+                height_blob = max_y - min_y
+                area = width_blob * height_blob
+                
+                # Filter small noise AND text characters (letters are usually < 1500px area)
+                if width_blob > 20 and height_blob > 20 and area > 2000:
                     # Filter huge blobs (likely the whole page or borders)
                     if (max_x - min_x) < width * 0.9 and (max_y - min_y) < height * 0.9:
                         blobs.append((min_x, min_y, max_x, max_y))
