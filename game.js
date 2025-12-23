@@ -304,11 +304,13 @@ class Enemy extends Sprite {
         // If this.facingLeft is FALSE, we want to Flip it (Right).
 
         if (this.facingLeft) {
-            ctx.drawImage(img, this.x, this.y, this.width, this.height);
-        } else {
+            // Source is RIGHT. We want LEFT. So FLIP.
             ctx.translate(this.x + this.width, this.y);
             ctx.scale(-1, 1);
             ctx.drawImage(img, 0, 0, this.width, this.height);
+        } else {
+            // Source is RIGHT. We want RIGHT. So NORMAL.
+            ctx.drawImage(img, this.x, this.y, this.width, this.height);
         }
         ctx.restore();
 
